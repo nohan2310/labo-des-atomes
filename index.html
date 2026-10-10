@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F1F2EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151819" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Labo Atomes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Labo des Atomes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Planche de laboratoire : papier gris-vert, filets fins, aucune ombre ni dégradé. La scène 3D est une illustration mate cernée d'un trait. */
+:root {
+  --bg: #F1F2EE;
+  --surface: #F8F8F5;
+  --tint: #E6E9E3;
+  --ink: #1D2125;
+  --muted: #5E656C;
+  --line: #CDD1CC;
+  --accent: #1F5F52;
+  --accent-ink: #FFFFFF;
+  --good: #2B6A43;
+  --good-tint: #DEEAE1;
+  --bad: #9A3A2D;
+  --bad-tint: #F0E0DB;
+  --stage-1: #E9ECE7;
+  --stage-2: #D8DCD6;
+  --stage-ink: #1D2125;
+  --stage-muted: #5E656C;
+  --stage-line: #B7BEB8;
+  --stage-chip: rgba(248, 248, 245, 0.7);
+  --font-body: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151819; --surface: #1B1F21; --tint: #22272A; --ink: #E6E7E4; --muted: #9AA09F; --line: #2E3438;
+    --accent: #86CDB9; --accent-ink: #0E1A16; --good: #7DC795; --good-tint: #1E3427; --bad: #E58C7D; --bad-tint: #3A2420;
+    --stage-1: #2A3034; --stage-2: #1A1E21; --stage-ink: #E6E7E4; --stage-muted: #9AA09F; --stage-line: #3A4146; --stage-chip: rgba(255, 255, 255, 0.06);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151819; --surface: #1B1F21; --tint: #22272A; --ink: #E6E7E4; --muted: #9AA09F; --line: #2E3438;
+  --accent: #86CDB9; --accent-ink: #0E1A16; --good: #7DC795; --good-tint: #1E3427; --bad: #E58C7D; --bad-tint: #3A2420;
+  --stage-1: #2A3034; --stage-2: #1A1E21; --stage-ink: #E6E7E4; --stage-muted: #9AA09F; --stage-line: #3A4146; --stage-chip: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-inline: 16px;
+  padding-block: 28px 56px;
+}
+.page { max-width: 1160px; margin-inline: auto; display: flex; flex-direction: column; gap: 28px; }
+sub, sup { line-height: 0; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* En-tête */
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 32px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+h1 { font-weight: 700; font-size: 1.7rem; line-height: 1.15; letter-spacing: -0.015em; margin: 0; }
+.lead { margin: 4px 0 0; color: var(--muted); font-size: 0.98rem; max-width: 48ch; }
+.tabs { display: flex; gap: 22px; }
+.tabs button { font-weight: 600; font-size: 0.98rem; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 0; margin-bottom: -15px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.grid { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 980px) {
+  .grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 44px; }
+  .left { position: sticky; top: 16px; }
+}
+.left, .right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+/* Scène */
+.stage {
+  position: relative; overflow: hidden; border: 1px solid var(--stage-line); border-radius: 4px;
+  aspect-ratio: 4 / 3; min-height: 340px; max-height: 70vh;
+  background: radial-gradient(80% 80% at 50% 45%, var(--stage-1), var(--stage-2));
+  color: var(--stage-ink);
+}
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--stage-ink); white-space: nowrap; will-change: transform; }
+.lbl.shell, .lbl.core { color: var(--stage-muted); font-size: 11px; letter-spacing: 0.06em; }
+.tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 20px); }
+.tools button { font-size: 0.8rem; font-weight: 500; color: var(--stage-ink); background: var(--stage-chip); border: 1px solid var(--stage-line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+.tools button[aria-pressed="true"] { border-color: var(--stage-ink); }
+.tools button:hover { border-color: var(--stage-ink); }
+.legend { position: absolute; left: 12px; bottom: 10px; display: flex; gap: 4px 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--stage-ink); max-width: calc(100% - 24px); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--c); border: 1px solid var(--stage-ink); }
+.pick { position: absolute; left: 12px; top: 11px; font-size: 0.78rem; color: var(--stage-muted); max-width: 48%; }
+.nogl { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--stage-muted); }
+.nogl.show { display: flex; }
+
+/* Index */
+.picker { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.picker.atoms { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
+.picker.mols { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.tile { position: relative; color: var(--ink); background: var(--surface); border: 0; padding: 8px 6px; min-height: 64px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
+.tile .z { position: absolute; top: 4px; left: 6px; font-family: var(--font-mono); font-size: 0.64rem; color: var(--muted); }
+.tile .d { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--c); border: 1px solid var(--ink); }
+.tile .s { font-weight: 700; font-size: 1.3rem; line-height: 1.2; }
+.tile .n { font-size: 0.66rem; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.tile[aria-pressed="true"] .z, .tile[aria-pressed="true"] .n { color: var(--bg); opacity: 0.75; }
+.tile:hover:not([aria-pressed="true"]) { background: var(--tint); }
+.tile.mo { align-items: flex-start; justify-content: center; padding: 10px 14px; min-height: 58px; }
+.tile.mo .f { font-family: var(--font-mono); font-weight: 500; font-size: 1rem; }
+.tile.mo .n { font-size: 0.8rem; }
+
+/* Fiche */
+.sheet { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.eyebrow { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.head h2 { font-weight: 700; font-size: 2rem; line-height: 1.1; letter-spacing: -0.02em; margin: 2px 0 0; overflow-wrap: anywhere; }
+.sym { flex: 0 0 auto; min-width: 66px; height: 66px; padding: 4px 8px; border: 1px solid var(--ink); border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; }
+.sym small { position: absolute; top: 4px; left: 6px; font-family: var(--font-mono); font-size: 0.64rem; color: var(--muted); }
+.sym b { font-weight: 700; font-size: 1.6rem; line-height: 1; }
+.sym.f b { font-family: var(--font-mono); font-weight: 500; font-size: 1.15rem; }
+.desc { margin: 0; max-width: 60ch; }
+.sec { display: flex; flex-direction: column; gap: 4px; }
+.sec p { margin: 0; color: var(--muted); max-width: 60ch; }
+.keep { background: var(--tint); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.keep p { margin: 0; max-width: 60ch; }
+.eq { font-family: var(--font-mono); font-size: 0.9rem; overflow-wrap: anywhere; padding-top: 4px; }
+.ions { display: flex; flex-direction: column; gap: 8px; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; width: fit-content; max-width: 100%; overflow: hidden; }
+.seg button { font-weight: 600; font-size: 0.9rem; color: var(--ink); background: var(--surface); border: 0; border-right: 1px solid var(--line); padding: 7px 14px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.ionnote { margin: 0; font-size: 0.94rem; max-width: 60ch; }
+dl { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); margin: 0; font-size: 0.93rem; border-top: 1px solid var(--line); }
+dt, dd { padding: 8px 0; border-bottom: 1px solid var(--line); }
+dt { color: var(--muted); padding-right: 20px; }
+dd { margin: 0; text-align: right; font-family: var(--font-mono); font-size: 0.86rem; overflow-wrap: anywhere; }
+
+/* Quiz */
+.q-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); }
+.bar { height: 2px; background: var(--line); }
+.bar i { display: block; height: 100%; background: var(--ink); width: 0; }
+.q-text { font-weight: 600; font-size: 1.35rem; line-height: 1.3; letter-spacing: -0.01em; margin: 0; max-width: 28ch; }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 14px; text-align: left; font-size: 1rem; font-weight: 500; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 11px 14px; cursor: pointer; }
+.opt .k { flex: 0 0 auto; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 0.78rem; border: 1px solid var(--muted); border-radius: 50%; color: var(--muted); }
+.opt:hover:not(:disabled) { border-color: var(--ink); }
+.opt:disabled { cursor: default; }
+.opt.ok { background: var(--good-tint); border-color: var(--good); }
+.opt.ko { background: var(--bad-tint); border-color: var(--bad); }
+.fb { background: var(--tint); border-radius: 4px; padding: 14px 16px; font-size: 0.95rem; }
+.fb b { display: block; margin-bottom: 2px; }
+.fb.ok b { color: var(--good); }
+.fb.ko b { color: var(--bad); }
+.btn { font-weight: 600; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 4px; padding: 10px 20px; cursor: pointer; align-self: flex-start; }
+.score { font-weight: 700; font-size: 3rem; line-height: 1; letter-spacing: -0.03em; margin: 0; }
+.score small { font-size: 1.2rem; color: var(--muted); font-weight: 500; }
+
+footer { color: var(--muted); font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; max-width: 80ch; padding-top: 14px; border-top: 1px solid var(--line); }
+footer p { margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Labo des Atomes</h1>
+      <p class="lead">Atomes, ions et molécules du programme de collège, en 3D.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Choisir une section">
+      <button role="tab" id="tab-atome" aria-selected="true">Atomes</button>
+      <button role="tab" id="tab-molecule" aria-selected="false">Molécules</button>
+      <button role="tab" id="tab-quiz" aria-selected="false">Quiz</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="left">
+      <div class="stage" id="stage">
+        <canvas id="cv" tabindex="0" role="img" aria-label="Modèle 3D. Glissez pour tourner, flèches du clavier pour orienter, plus et moins pour zoomer."></canvas>
+        <div class="labels" id="labels"></div>
+        <div class="pick" id="pick" role="status"></div>
+        <div class="tools">
+          <button type="button" id="btn-labels" aria-pressed="true">Étiquettes</button>
+          <button type="button" id="btn-compact" aria-pressed="false" hidden>Modèle compact</button>
+          <button type="button" id="zin" aria-label="Zoom avant">+</button>
+          <button type="button" id="zout" aria-label="Zoom arrière">−</button>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="nogl" id="nogl">La vue 3D n’est pas disponible sur cet appareil. Les fiches et le quiz fonctionnent quand même.</div>
+      </div>
+      <div class="picker atoms" id="picker" role="group" aria-label="Choisir un élément"></div>
+    </div>
+
+    <div class="right">
+      <section class="sheet" id="info"></section>
+      <section class="sheet" id="quiz" hidden></section>
+    </div>
+  </div>
+
+  <footer>
+    <p>Modèles simplifiés : en réalité, le noyau est environ 100 000 fois plus petit que l’atome, et les électrons ne tournent pas sur des cercles. Les couches K, L, M, N sont le modèle utilisé au collège.</p>
+    <p>Pour chaque atome, le nombre de neutrons est celui de l’isotope le plus courant. Les formes et les angles sont arrondis.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var TAU = Math.PI * 2;
+
+  /* ============ Utilitaires ============ */
+  function sub(s) { return s.replace(/(\d+)/g, '<sub>$1</sub>'); }
+  function chargeHtml(c) { var n = Math.abs(c); return '<sup>' + (n > 1 ? n : '') + (c > 0 ? '+' : '−') + '</sup>'; }
+  function ionHtml(sym, c) { return sym + chargeHtml(c); }
+  function shellHtml(sh) {
+    var N = ['K', 'L', 'M', 'N'];
+    return sh.length ? sh.map(function (n, i) { return '(' + N[i] + ')<sup>' + n + '</sup>'; }).join(' ') : 'aucun électron';
+  }
+  function pl(n, s, p) { return n + ' ' + (n > 1 ? (p || s + 's') : s); }
+  function deName(n) { return /^[aeiouyh]/i.test(n) ? 'd’' + n : 'de ' + n; }
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function shuffle(a) { var b = a.slice(); for (var i = b.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = b[i]; b[i] = b[j]; b[j] = t; } return b; }
+  function rnd(n) { return Math.floor(Math.random() * n); }
+
+  /* vecteurs */
+  function vadd(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function vsub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function vsc(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function vdot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function vcross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function vlen(a) { return Math.sqrt(vdot(a, a)); }
+  function vunit(a) { var l = vlen(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+
+  /* ============ Données : atomes ============ */
+  var CPK = { H: '#EFEDE6', He: '#CFE3E6', C: '#40454D', N: '#3F6DB3', O: '#C9503B', Na: '#8E6BB8', Mg: '#7FA64A', Al: '#A89C98', S: '#D8B93A', Cl: '#58A05F', Ca: '#7FB069', Fe: '#B5603A', Cu: '#B87333', Zn: '#7C86AB' };
+  var COL = { proton: '#C0503C', neutron: '#B4B6B0', electron: '#2F5DA8', ring: 0x7a8088, stick: '#8F959B' };
+  var ELNAME = { H: 'hydrogène', C: 'carbone', N: 'azote', O: 'oxygène', Cl: 'chlore' };
+
+  var ATOMS = [
+    { sym: 'H', nom: 'Hydrogène', Z: 1, N: 0, shells: [1], famille: 'Non-métal', liaisons: 1,
+      desc: 'Le plus petit et le plus léger de tous les atomes : un seul proton et un seul électron, pas de neutron. Le Soleil est surtout fait d’hydrogène.',
+      ou: 'Il entre dans la composition de l’eau, des hydrocarbures et de presque toutes les molécules du vivant.',
+      ions: [{ c: 1, shells: [], note: 'L’ion hydrogène H⁺ est le responsable de l’acidité : on le trouve dans toutes les solutions acides.' }] },
+    { sym: 'He', nom: 'Hélium', Z: 2, N: 2, shells: [2], famille: 'Gaz noble', liaisons: 0,
+      desc: 'Sa couche externe est pleine (2 électrons) : il ne forme pratiquement aucune liaison et ne réagit presque jamais.',
+      ou: 'Gaz plus léger que l’air, il sert à gonfler les ballons et les dirigeables.', ions: [] },
+    { sym: 'C', nom: 'Carbone', Z: 6, N: 6, shells: [2, 4], famille: 'Non-métal', liaisons: 4,
+      desc: 'Avec 4 électrons sur sa couche externe, il peut former 4 liaisons : c’est la base de la chimie du vivant et des combustibles.',
+      ou: 'Le diamant et le graphite (mine de crayon) sont deux formes de carbone pur. On le trouve aussi dans le charbon et dans toutes les molécules organiques.', ions: [] },
+    { sym: 'N', nom: 'Azote', Z: 7, N: 7, shells: [2, 5], famille: 'Non-métal', liaisons: 3,
+      desc: 'Il forme 3 liaisons. L’azote est le principal gaz de l’air, sous forme de diazote N₂.',
+      ou: 'On le trouve dans l’air (environ 78 %), dans les protéines et dans les engrais.', ions: [] },
+    { sym: 'O', nom: 'Oxygène', Z: 8, N: 8, shells: [2, 6], famille: 'Non-métal', liaisons: 2,
+      desc: 'Il forme 2 liaisons. Il est indispensable à la respiration et à toutes les combustions.',
+      ou: 'Environ 21 % de l’air est du dioxygène O₂. L’oxygène est aussi présent dans l’eau, dans les oxydes et dans la rouille.',
+      ions: [{ c: -2, shells: [2, 8], note: 'L’ion oxyde O²⁻ se trouve dans les oxydes, comme l’oxyde de fer de la rouille.' }] },
+    { sym: 'Na', nom: 'Sodium', Z: 11, N: 12, shells: [2, 8, 1], famille: 'Métal alcalin', liaisons: 0,
+      desc: 'Métal mou qui se coupe au couteau et réagit violemment avec l’eau. Il perd facilement son électron externe.',
+      ou: 'Dans le sel de cuisine NaCl, le sodium est présent sous forme d’ions Na⁺.',
+      ions: [{ c: 1, shells: [2, 8], note: 'En perdant son électron externe, le sodium obtient une couche externe pleine (8 électrons) : l’ion Na⁺ est très stable.' }] },
+    { sym: 'Mg', nom: 'Magnésium', Z: 12, N: 12, shells: [2, 8, 2], famille: 'Métal alcalino-terreux', liaisons: 0,
+      desc: 'Métal léger. Un ruban de magnésium brûle avec une flamme blanche éblouissante.',
+      ou: 'On l’utilise dans des alliages légers et dans les feux d’artifice.',
+      ions: [{ c: 2, shells: [2, 8], note: 'En solution, l’ion Mg²⁺ est incolore. Test à la soude : précipité blanc.' }] },
+    { sym: 'Al', nom: 'Aluminium', Z: 13, N: 14, shells: [2, 8, 3], famille: 'Métal', liaisons: 0,
+      desc: 'Métal léger qui résiste à la corrosion grâce à une fine couche protectrice d’oxyde.',
+      ou: 'Canettes, emballages, cadres de vélo, avions.',
+      ions: [{ c: 3, shells: [2, 8], note: 'En solution, l’ion Al³⁺ est incolore. Test à la soude : précipité blanc.' }] },
+    { sym: 'S', nom: 'Soufre', Z: 16, N: 16, shells: [2, 8, 6], famille: 'Non-métal', liaisons: 2,
+      desc: 'Solide jaune, présent près des volcans. Comme l’oxygène, il forme 2 liaisons.',
+      ou: 'Sa combustion forme du dioxyde de soufre SO₂, un gaz polluant responsable des pluies acides.', ions: [] },
+    { sym: 'Cl', nom: 'Chlore', Z: 17, N: 18, shells: [2, 8, 7], famille: 'Halogène', liaisons: 1,
+      desc: 'Avec 7 électrons sur sa couche externe, il forme 1 liaison ou gagne 1 électron pour devenir l’ion chlorure.',
+      ou: 'Le dichlore Cl₂ sert à désinfecter l’eau des piscines. L’ion chlorure est dans le sel de cuisine.',
+      ions: [{ c: -1, shells: [2, 8, 8], note: 'Test des ions chlorure : avec du nitrate d’argent, on obtient un précipité blanc qui noircit à la lumière.' }] },
+    { sym: 'Ca', nom: 'Calcium', Z: 20, N: 20, shells: [2, 8, 8, 2], famille: 'Métal alcalino-terreux', liaisons: 0,
+      desc: 'Métal présent dans les os, les dents, les coquilles et le calcaire.',
+      ou: 'On le trouve dans le lait, dans la craie et dans l’eau calcaire.',
+      ions: [{ c: 2, shells: [2, 8, 8], note: 'Les ions Ca²⁺ sont responsables de la dureté de l’eau calcaire.' }] },
+    { sym: 'Fe', nom: 'Fer', Z: 26, N: 30, shells: [2, 8, 14, 2], famille: 'Métal de transition', liaisons: 0,
+      desc: 'Métal de l’acier. Il rouille quand il est en contact avec l’eau et le dioxygène de l’air.',
+      ou: 'Construction, outils, voitures. Le fer forme deux ions différents.',
+      ions: [
+        { c: 2, shells: [2, 8, 14], note: 'En solution, l’ion Fe²⁺ est vert pâle. Test à la soude : précipité vert.' },
+        { c: 3, shells: [2, 8, 13], note: 'En solution, l’ion Fe³⁺ est orangé. Test à la soude : précipité rouille.' }] },
+    { sym: 'Cu', nom: 'Cuivre', Z: 29, N: 34, shells: [2, 8, 18, 1], famille: 'Métal de transition', liaisons: 0,
+      desc: 'Métal rougeâtre, excellent conducteur de l’électricité et de la chaleur.',
+      ou: 'Fils électriques, casseroles, canalisations.',
+      ions: [{ c: 2, shells: [2, 8, 17], note: 'En solution, l’ion Cu²⁺ est bleu. Test à la soude : précipité bleu.' }] },
+    { sym: 'Zn', nom: 'Zinc', Z: 30, N: 34, shells: [2, 8, 18, 2], famille: 'Métal de transition', liaisons: 0,
+      desc: 'Métal gris bleuté qui protège l’acier de la rouille : c’est la galvanisation.',
+      ou: 'Toits, gouttières, piles, acier galvanisé.',
+      ions: [{ c: 2, shells: [2, 8, 18], note: 'En solution, l’ion Zn²⁺ est incolore. Test à la soude : précipité blanc.' }] }
+  ];
+  var ATOM = {};
+  ATOMS.forEach(function (a) { ATOM[a.sym] = a; });
+
+  /* ============ Données : molécules ============ */
+  function chain(els, lens) {
+    var beta = 34.5 * Math.PI / 180, pts = [[0, 0, 0]], i;
+    for (i = 1; i < els.length; i++) {
+      var s = i % 2 ? 1 : -1, p = pts[i - 1];
+      pts.push([p[0] + lens[i - 1] * Math.cos(beta), p[1] + s * lens[i - 1] * Math.sin(beta), 0]);
+    }
+    var atoms = [], bonds = [];
+    els.forEach(function (el, k) { atoms.push([el, pts[k][0], pts[k][1], pts[k][2]]); });
+    for (i = 0; i < els.length - 1; i++) bonds.push([i, i + 1, 1]);
+    var last = els.length - 1;
+    for (i = 0; i <= last; i++) {
+      var nb = [];
+      if (i > 0) nb.push(vunit(vsub(pts[i - 1], pts[i])));
+      if (i < last) nb.push(vunit(vsub(pts[i + 1], pts[i])));
+      var P = pts[i], idx;
+      if (els[i] === 'C') {
+        if (nb.length === 1) {
+          var n = nb[0], a = vunit(vcross([0, 0, 1], n)), b = vcross(n, a);
+          [0, 1, 2].forEach(function (j) {
+            var ph = j * TAU / 3;
+            var h = vadd(vsc(n, -1 / 3), vsc(vadd(vsc(a, Math.cos(ph)), vsc(b, Math.sin(ph))), 2 * Math.SQRT2 / 3));
+            idx = atoms.length; atoms.push(['H'].concat(vadd(P, vsc(h, 1.09)))); bonds.push([i, idx, 1]);
+          });
+        } else {
+          var u = vunit(vsc(vadd(nb[0], nb[1]), -1)), w = vunit(vcross(nb[0], nb[1])), th = 54.75 * Math.PI / 180;
+          [1, -1].forEach(function (sg) {
+            var h = vadd(vsc(u, Math.cos(th)), vsc(w, sg * Math.sin(th)));
+            idx = atoms.length; atoms.push(['H'].concat(vadd(P, vsc(h, 1.09)))); bonds.push([i, idx, 1]);
+          });
+        }
+      } else if (els[i] === 'O') {
+        var n2 = nb[0], a2 = vunit(vcross([0, 0, 1], n2)), t2 = 108.5 * Math.PI / 180;
+        var h2 = vadd(vsc(n2, Math.cos(t2)), vsc(a2, Math.sin(t2)));
+        idx = atoms.length; atoms.push(['H'].concat(vadd(P, vsc(h2, 0.96)))); bonds.push([i, idx, 1]);
+      }
+    }
+    return { atoms: atoms, bonds: bonds };
+  }
+
+  var MOLS = [
+    { id: 'h2', nom: 'Dihydrogène', f: 'H2', etat: 'gaz', forme: 'linéaire', prog: 'Combustions',
+      atoms: [['H', -0.37, 0, 0], ['H', 0.37, 0, 0]], bonds: [[0, 1, 1]],
+      desc: 'Deux atomes d’hydrogène unis par une liaison simple. C’est la plus légère de toutes les molécules, et un gaz très inflammable.',
+      ou: 'Presque absent de l’air. On le fabrique en décomposant l’eau par électrolyse. Il sert de carburant dans certaines piles à combustible.',
+      keep: 'Sa combustion avec le dioxygène forme de l’eau.', eq: '2 H<sub>2</sub> + O<sub>2</sub> → 2 H<sub>2</sub>O' },
+    { id: 'o2', nom: 'Dioxygène', f: 'O2', etat: 'gaz', forme: 'linéaire', prog: 'Air',
+      atoms: [['O', -0.605, 0, 0], ['O', 0.605, 0, 0]], bonds: [[0, 1, 2]],
+      desc: 'Deux atomes d’oxygène unis par une liaison double. Environ 21 % de l’air est du dioxygène.',
+      ou: 'Dans l’air et dissous dans l’eau. Les êtres vivants en ont besoin pour respirer, et toute combustion en consomme.',
+      keep: 'Test d’identification : le dioxygène ravive une bûchette qui rougeoit.' },
+    { id: 'n2', nom: 'Diazote', f: 'N2', etat: 'gaz', forme: 'linéaire', prog: 'Air',
+      atoms: [['N', -0.55, 0, 0], ['N', 0.55, 0, 0]], bonds: [[0, 1, 3]],
+      desc: 'Deux atomes d’azote liés par une liaison triple, très solide : cette molécule réagit très peu.',
+      ou: 'Environ 78 % de l’air. L’azote liquide sert à conserver et à refroidir.',
+      keep: 'Le diazote n’entretient pas les combustions.' },
+    { id: 'cl2', nom: 'Dichlore', f: 'Cl2', etat: 'gaz', forme: 'linéaire', prog: 'Réactions chimiques',
+      atoms: [['Cl', -0.995, 0, 0], ['Cl', 0.995, 0, 0]], bonds: [[0, 1, 1]],
+      desc: 'Deux atomes de chlore unis par une liaison simple. Gaz jaune-vert à l’odeur piquante, toxique.',
+      ou: 'On l’utilise pour désinfecter l’eau des piscines et l’eau potable.',
+      keep: 'Le dichlore réagit avec la plupart des métaux, comme le fer, pour former des chlorures.' },
+    { id: 'h2o', nom: 'Eau', f: 'H2O', etat: 'liquide', forme: 'coudée', prog: 'Eau',
+      atoms: [['O', 0, 0, 0], ['H', 0.757, -0.587, 0], ['H', -0.757, -0.587, 0]], bonds: [[0, 1, 1], [0, 2, 1]],
+      desc: 'Un atome d’oxygène relié à deux atomes d’hydrogène. La molécule est coudée : l’angle entre les deux liaisons est d’environ 104,5°.',
+      ou: 'L’eau couvre environ 71 % de la surface de la Terre et représente plus de la moitié du corps humain.',
+      keep: 'À 20 °C, l’eau pure est un liquide incolore et inodore. Elle dissout beaucoup de substances : c’est un solvant.', eq: '2 H<sub>2</sub> + O<sub>2</sub> → 2 H<sub>2</sub>O' },
+    { id: 'co2', nom: 'Dioxyde de carbone', f: 'CO2', etat: 'gaz', forme: 'linéaire', prog: 'Combustions',
+      atoms: [['C', 0, 0, 0], ['O', 1.16, 0, 0], ['O', -1.16, 0, 0]], bonds: [[0, 1, 2], [0, 2, 2]],
+      desc: 'Un atome de carbone au centre, lié par deux liaisons doubles à deux atomes d’oxygène. La molécule est linéaire.',
+      ou: 'Il est rejeté par les combustions et par la respiration. Il est dissous dans les boissons gazeuses. Il représente environ 0,04 % de l’air.',
+      keep: 'Il trouble l’eau de chaux : c’est son test d’identification. C’est aussi un gaz à effet de serre.', eq: 'C + O<sub>2</sub> → CO<sub>2</sub>' },
+    { id: 'co', nom: 'Monoxyde de carbone', f: 'CO', etat: 'gaz', forme: 'linéaire', prog: 'Combustions',
+      atoms: [['C', -0.56, 0, 0], ['O', 0.56, 0, 0]], bonds: [[0, 1, 3]],
+      desc: 'Un atome de carbone lié à un atome d’oxygène. Gaz incolore, inodore et très toxique.',
+      ou: 'Il se forme lors d’une combustion incomplète, quand le dioxygène manque : chaudière mal réglée, brasero dans une pièce fermée.',
+      keep: 'Il se fixe sur le sang à la place du dioxygène. Il faut aérer et faire vérifier les appareils de chauffage.', eq: '2 C + O<sub>2</sub> → 2 CO' },
+    { id: 'ch4', nom: 'Méthane', f: 'CH4', etat: 'gaz', forme: 'tétraédrique', prog: 'Combustions',
+      atoms: [['C', 0, 0, 0], ['H', 0.629, 0.629, 0.629], ['H', 0.629, -0.629, -0.629], ['H', -0.629, 0.629, -0.629], ['H', -0.629, -0.629, 0.629]],
+      bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1]],
+      desc: 'Un atome de carbone entouré de quatre atomes d’hydrogène, placés aux sommets d’un tétraèdre (angles d’environ 109,5°).',
+      ou: 'C’est le principal constituant du gaz naturel. Il se forme aussi dans les marais et lors de la fermentation.',
+      keep: 'Sa combustion complète forme du dioxyde de carbone et de l’eau. Le méthane est aussi un gaz à effet de serre.', eq: 'CH<sub>4</sub> + 2 O<sub>2</sub> → CO<sub>2</sub> + 2 H<sub>2</sub>O' },
+    { id: 'nh3', nom: 'Ammoniac', f: 'NH3', etat: 'gaz', forme: 'pyramidale', prog: 'Acides et bases',
+      atoms: [['N', 0, 0.376, 0], ['H', 0.937, 0, 0], ['H', -0.4685, 0, 0.8115], ['H', -0.4685, 0, -0.8115]],
+      bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1]],
+      desc: 'Un atome d’azote lié à trois atomes d’hydrogène. La molécule a une forme de pyramide.',
+      ou: 'Gaz à l’odeur piquante. Dissous dans l’eau, il donne l’ammoniaque, utilisée dans des produits ménagers et des engrais.',
+      keep: 'Une solution d’ammoniaque est basique : le papier pH vire au bleu ou au violet.' },
+    { id: 'hcl', nom: 'Chlorure d’hydrogène', f: 'HCl', etat: 'gaz', forme: 'linéaire', prog: 'Acides et bases',
+      atoms: [['H', -0.87, 0, 0], ['Cl', 0.4, 0, 0]], bonds: [[0, 1, 1]],
+      desc: 'Un atome d’hydrogène relié à un atome de chlore. Gaz incolore à l’odeur piquante.',
+      ou: 'Dissous dans l’eau, il forme l’acide chlorhydrique, qui contient des ions H⁺ et Cl⁻. L’estomac en produit pour digérer.',
+      keep: 'La solution d’acide chlorhydrique est acide : son pH est inférieur à 7.' },
+    { id: 'c3h8', nom: 'Propane', f: 'C3H8', etat: 'gaz', forme: 'en zigzag', prog: 'Combustions',
+      chain: [['C', 'C', 'C'], [1.54, 1.54]],
+      desc: 'Une chaîne de trois atomes de carbone portant huit atomes d’hydrogène. Formule semi-développée : CH<sub>3</sub>–CH<sub>2</sub>–CH<sub>3</sub>.',
+      ou: 'Gaz stocké liquide sous pression dans les bouteilles de barbecue, de chauffage et de camping.',
+      keep: 'Sa combustion complète ne produit que du dioxyde de carbone et de l’eau, et dégage beaucoup d’énergie.', eq: 'C<sub>3</sub>H<sub>8</sub> + 5 O<sub>2</sub> → 3 CO<sub>2</sub> + 4 H<sub>2</sub>O' },
+    { id: 'c4h10', nom: 'Butane', f: 'C4H10', etat: 'gaz', forme: 'en zigzag', prog: 'Combustions',
+      chain: [['C', 'C', 'C', 'C'], [1.54, 1.54, 1.54]],
+      desc: 'Une chaîne de quatre atomes de carbone portant dix atomes d’hydrogène. Formule semi-développée : CH<sub>3</sub>–CH<sub>2</sub>–CH<sub>2</sub>–CH<sub>3</sub>.',
+      ou: 'Gaz des briquets et des cartouches de réchaud de camping.',
+      keep: 'Si le dioxygène manque, la combustion est incomplète : elle forme du monoxyde de carbone et de la suie.', eq: '2 C<sub>4</sub>H<sub>10</sub> + 13 O<sub>2</sub> → 8 CO<sub>2</sub> + 10 H<sub>2</sub>O' },
+    { id: 'c2h6o', nom: 'Éthanol', f: 'C2H6O', etat: 'liquide', forme: 'en zigzag', prog: 'Combustions',
+      chain: [['C', 'C', 'O'], [1.52, 1.43]],
+      desc: 'Une chaîne de deux atomes de carbone terminée par un groupe –OH. Formule semi-développée : CH<sub>3</sub>–CH<sub>2</sub>–OH.',
+      ou: 'Liquide incolore utilisé comme désinfectant, solvant et carburant (bioéthanol). C’est l’alcool des boissons alcoolisées.',
+      keep: 'L’éthanol est inflammable : on le garde loin des flammes.', eq: 'C<sub>2</sub>H<sub>6</sub>O + 3 O<sub>2</sub> → 2 CO<sub>2</sub> + 3 H<sub>2</sub>O' },
+    { id: 'nacl', nom: 'Sel de cuisine (cristal)', f: 'NaCl', etat: 'solide', forme: 'cristal cubique', prog: 'Solutions ioniques', crystal: true,
+      compo: 'Autant d’ions sodium Na<sup>+</sup> que d’ions chlorure Cl<sup>−</sup>', liaison: 'Attraction entre ions de charges opposées',
+      desc: 'Ce n’est pas une molécule : un cristal de sel est un empilement régulier d’ions Na⁺ et Cl⁻, qui s’attirent parce que leurs charges sont opposées. L’ensemble est électriquement neutre.',
+      ou: 'C’est le chlorure de sodium, le sel de cuisine. On le trouve dans l’eau de mer et dans les mines de sel.',
+      keep: 'Dissous dans l’eau, il libère ses ions : la solution conduit le courant électrique, mais le sel solide ne le conduit pas.' }
+  ];
+  var MOL = {};
+  MOLS.forEach(function (m) {
+    if (m.chain) { var r = chain(m.chain[0], m.chain[1]); m.atoms = r.atoms; m.bonds = r.bonds; }
+    if (m.crystal) {
+      m.atoms = []; m.bonds = [];
+      for (var x = -1; x <= 1; x++) for (var y = -1; y <= 1; y++) for (var z = -1; z <= 1; z++) {
+        m.atoms.push([(Math.abs(x + y + z) % 2 === 0) ? 'Na+' : 'Cl-', x * 1.3, y * 1.3, z * 1.3]);
+      }
+      m.k = 1;
+    }
+    MOL[m.id] = m;
+  });
+
+  var RB = { H: 0.28, C: 0.42, N: 0.40, O: 0.38, Cl: 0.55, 'Na+': 0.36, 'Cl-': 0.60 };
+  var RC = { H: 0.45, C: 1.10, N: 1.03, O: 0.96, Cl: 1.48, 'Na+': 0.56, 'Cl-': 0.72 };
+  function colKey(el) { return el.replace(/[+-]/, ''); }
+
+  /* ============ Rendu des fiches ============ */
+  var view = { kind: 'atome', id: 'H', ion: -1 };
+  var mode = 'atome';
+  var compact = false;
+  var S3 = null;
+
+  function ionLabel(a, i) { return ionHtml(a.sym, a.ions[i].c); }
+
+  function renderAtomInfo() {
+    var a = ATOM[view.id], ion = view.ion >= 0 ? a.ions[view.ion] : null;
+    var e = ion ? a.Z - ion.c : a.Z, sh = ion ? ion.shells : a.shells;
+    var charge = ion ? ion.c : 0;
+    var chTxt = charge === 0 ? '0 (neutre)' : (charge > 0 ? '+' : '−') + Math.abs(charge) + ' e';
+    var html = '<div><div class="eyebrow">' + (ion ? 'Ion' : 'Atome') + ' · ' + a.famille + '</div>' +
+      '<div class="head"><h2>' + a.nom + '</h2><div class="sym"><small>' + a.Z + '</small><b>' + (ion ? ionHtml(a.sym, ion.c) : a.sym) + '</b></div></div></div>';
+    html += '<p class="desc">' + a.desc + '</p>';
+    if (a.ions.length) {
+      html += '<div class="ions"><div class="eyebrow">Forme</div><div class="seg" role="group" aria-label="Atome ou ion">';
+      html += '<button type="button" data-ion="-1" aria-pressed="' + (view.ion < 0) + '">Atome neutre</button>';
+      a.ions.forEach(function (io, i) { html += '<button type="button" data-ion="' + i + '" aria-pressed="' + (view.ion === i) + '">Ion ' + ionLabel(a, i) + '</button>'; });
+      html += '</div>';
+      if (ion) {
+        var verb = ion.c > 0 ? 'perd ' + pl(ion.c, 'électron') : 'gagne ' + pl(-ion.c, 'électron');
+        html += '<p class="ionnote"><b>L’atome ' + verb + '.</b> Il reste ' + pl(e, 'électron') + ' pour ' + pl(a.Z, 'proton') + ' : la charge totale est ' + (ion.c > 0 ? '+' : '−') + Math.abs(ion.c) + '. Le noyau ne change pas. ' + ion.note + '</p>';
+      }
+      html += '</div>';
+    }
+    html += '<dl>' +
+      '<dt>Numéro atomique Z</dt><dd>' + a.Z + '</dd>' +
+      '<dt>Protons</dt><dd>' + a.Z + '</dd>' +
+      '<dt>Neutrons</dt><dd>' + a.N + '</dd>' +
+      '<dt>Nucléons A</dt><dd>' + (a.Z + a.N) + '</dd>' +
+      '<dt>Électrons</dt><dd>' + e + '</dd>' +
+      '<dt>Répartition</dt><dd>' + shellHtml(sh) + '</dd>' +
+      '<dt>Couche externe</dt><dd>' + (sh.length ? pl(sh[sh.length - 1], 'électron') : '—') + '</dd>' +
+      '<dt>Charge totale</dt><dd>' + chTxt + '</dd>' +
+      (ion ? '' : '<dt>Liaisons possibles</dt><dd>' + (a.liaisons ? a.liaisons : (a.famille === 'Gaz noble' ? 'aucune' : 'forme des ions')) + '</dd>') +
+      '</dl>';
+    html += '<div class="sec"><div class="eyebrow">Où le trouve-t-on ?</div><p>' + a.ou + '</p></div>';
+    $('info').innerHTML = html;
+    Array.prototype.forEach.call($('info').querySelectorAll('[data-ion]'), function (b) {
+      b.addEventListener('click', function () { view.ion = Number(b.getAttribute('data-ion')); refresh(); });
+    });
+  }
+
+  function composition(m) {
+    if (m.compo) return m.compo;
+    var counts = {}, order = [];
+    m.atoms.forEach(function (at) { if (!counts[at[0]]) { counts[at[0]] = 0; order.push(at[0]); } counts[at[0]]++; });
+    return order.map(function (el) { return pl(counts[el], 'atome') + ' ' + deName(ELNAME[el]) + ' (' + el + ')'; }).join(', ');
+  }
+  function liaisons(m) {
+    if (m.liaison) return m.liaison;
+    var c = { 1: 0, 2: 0, 3: 0 };
+    m.bonds.forEach(function (b) { c[b[2]]++; });
+    var out = [];
+    if (c[1]) out.push(pl(c[1], 'liaison simple'));
+    if (c[2]) out.push(pl(c[2], 'liaison double'));
+    if (c[3]) out.push(pl(c[3], 'liaison triple'));
+    return out.join(', ');
+  }
+  function renderMolInfo() {
+    var m = MOL[view.id];
+    var html = '<div><div class="eyebrow">' + (m.crystal ? 'Cristal ionique' : 'Molécule') + ' · ' + m.prog + '</div>' +
+      '<div class="head"><h2>' + m.nom + '</h2><div class="sym f"><b>' + sub(m.f) + '</b></div></div></div>';
+    html += '<p class="desc">' + m.desc + '</p>';
+    html += '<dl><dt>Formule</dt><dd>' + sub(m.f) + '</dd>' +
+      '<dt>État à 20 °C</dt><dd>' + m.etat + '</dd>' +
+      '<dt>Forme</dt><dd>' + m.forme + '</dd>' +
+      '<dt>' + (m.crystal ? 'Composition' : 'Atomes') + '</dt><dd>' + composition(m) + '</dd>' +
+      '<dt>' + (m.crystal ? 'Cohésion' : 'Liaisons') + '</dt><dd>' + liaisons(m) + '</dd></dl>';
+    html += '<div class="sec"><div class="eyebrow">Où la trouve-t-on ?</div><p>' + m.ou + '</p></div>';
+    html += '<div class="keep"><div class="eyebrow">À retenir</div><p>' + m.keep + '</p>' + (m.eq ? '<div class="eq">' + m.eq + '</div>' : '') + '</div>';
+    $('info').innerHTML = html;
+  }
+
+  /* ============ Index et navigation ============ */
+  function buildPicker() {
+    var p = $('picker');
+    p.innerHTML = '';
+    if (mode === 'atome') {
+      p.className = 'picker atoms';
+      ATOMS.forEach(function (a) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'tile'; b.dataset.id = a.sym;
+        b.setAttribute('aria-label', a.nom);
+        b.innerHTML = '<span class="z">' + a.Z + '</span><i class="d" style="--c:' + CPK[a.sym] + '"></i><span class="s">' + a.sym + '</span><span class="n">' + a.nom + '</span>';
+        b.addEventListener('click', function () { view = { kind: 'atome', id: a.sym, ion: -1 }; refresh(); });
+        p.appendChild(b);
+      });
+    } else if (mode === 'molecule') {
+      p.className = 'picker mols';
+      MOLS.forEach(function (m) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'tile mo'; b.dataset.id = m.id;
+        b.innerHTML = '<span class="f">' + sub(m.f) + '</span><span class="n">' + m.nom + '</span>';
+        b.addEventListener('click', function () { view = { kind: 'molecule', id: m.id, ion: -1 }; refresh(); });
+        p.appendChild(b);
+      });
+    }
+  }
+  function markPicker() {
+    Array.prototype.forEach.call($('picker').children, function (b) {
+      b.setAttribute('aria-pressed', b.dataset.id === view.id ? 'true' : 'false');
+    });
+  }
+  function setLegend() {
+    var L = $('legend'), items = [];
+    if (view.kind === 'atome') {
+      items = [[COL.proton, 'Protons (+)'], [COL.neutron, 'Neutrons'], [COL.electron, 'Électrons (−)']];
+    } else {
+      var m = MOL[view.id];
+      if (m.crystal) items = [[CPK.Na, 'Ion sodium Na<sup>+</sup>'], [CPK.Cl, 'Ion chlorure Cl<sup>−</sup>']];
+      else {
+        var seen = {};
+        m.atoms.forEach(function (at) { if (!seen[at[0]]) { seen[at[0]] = 1; items.push([CPK[at[0]], at[0] + ' · ' + ELNAME[at[0]]]); } });
+      }
+    }
+    L.innerHTML = items.map(function (it) { return '<span><i style="--c:' + it[0] + '"></i>' + it[1] + '</span>'; }).join('');
+  }
+  function render3d() {
+    $('btn-compact').hidden = view.kind !== 'molecule';
+    $('pick').textContent = view.kind === 'molecule' && !MOL[view.id].crystal ? 'Touchez un atome pour l’identifier' : '';
+    setLegend();
+    if (!S3) return;
+    if (view.kind === 'atome') {
+      var a = ATOM[view.id];
+      S3.atom(a, view.ion >= 0 ? a.ions[view.ion] : null);
+    } else {
+      S3.mol(MOL[view.id], compact);
+    }
+  }
+  function refresh() {
+    if (mode === 'atome') renderAtomInfo(); else if (mode === 'molecule') renderMolInfo();
+    markPicker();
+    render3d();
+  }
+  function setMode(next) {
+    mode = next;
+    ['atome', 'molecule', 'quiz'].forEach(function (k) { $('tab-' + k).setAttribute('aria-selected', k === next ? 'true' : 'false'); });
+    $('info').hidden = next === 'quiz';
+    $('quiz').hidden = next !== 'quiz';
+    $('picker').hidden = next === 'quiz';
+    if (next === 'atome') { view = view.kind === 'atome' ? view : { kind: 'atome', id: 'H', ion: -1 }; buildPicker(); refresh(); }
+    else if (next === 'molecule') { view = view.kind === 'molecule' ? view : { kind: 'molecule', id: 'h2o', ion: -1 }; buildPicker(); refresh(); }
+    else { quizIntro(); }
+  }
+  ['atome', 'molecule', 'quiz'].forEach(function (k) { $('tab-' + k).addEventListener('click', function () { setMode(k); }); });
+
+  $('btn-labels').addEventListener('click', function () {
+    var on = $('btn-labels').getAttribute('aria-pressed') !== 'true';
+    $('btn-labels').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('labels').hidden = !on;
+  });
+  $('btn-compact').addEventListener('click', function () {
+    compact = $('btn-compact').getAttribute('aria-pressed') !== 'true';
+    $('btn-compact').setAttribute('aria-pressed', compact ? 'true' : 'false');
+    if (S3 && view.kind === 'molecule') S3.mol(MOL[view.id], compact);
+  });
+
+  /* ============ Quiz ============ */
+  var QN = 10, quiz = null;
+  function quizIntro() {
+    var best = load('labo.best', null);
+    $('quiz').innerHTML = '<div class="eyebrow">Quiz</div><p class="q-text">Testez ce que vous avez retenu</p>' +
+      '<p class="desc">' + QN + ' questions tirées au hasard : protons, électrons, formules, formes des molécules et ions. Après chaque réponse, le modèle 3D correspondant s’affiche.</p>' +
+      (best !== null ? '<p class="eyebrow">Meilleur score : ' + best + ' / ' + QN + '</p>' : '') +
+      '<button class="btn" id="q-start" type="button">Commencer</button>';
+    $('q-start').addEventListener('click', function () { quiz = { i: 0, score: 0, used: {} }; nextQuestion(); });
+  }
+  function uniqueOptions(correct, pool, n, key) {
+    var out = [correct], seen = {}; seen[key(correct)] = 1;
+    shuffle(pool).forEach(function (v) { if (out.length < n && !seen[key(v)]) { seen[key(v)] = 1; out.push(v); } });
+    return out;
+  }
+  function makeQuestion() {
+    var t = rnd(5), a, m, q;
+    if (t === 0) {
+      a = ATOMS[rnd(ATOMS.length)];
+      var pool = []; for (var d = -4; d <= 4; d++) if (d !== 0 && a.Z + d > 0) pool.push(a.Z + d);
+      var o = shuffle(uniqueOptions(a.Z, pool, 4, String));
+      q = { key: 'p' + a.sym, text: 'Combien de protons possède l’atome de ' + a.nom.toLowerCase() + ' (' + a.sym + ') ?', opts: o.map(String), ok: o.indexOf(a.Z),
+        why: 'Le numéro atomique de ' + a.nom.toLowerCase() + ' est Z = ' + a.Z + ' : son noyau contient ' + pl(a.Z, 'proton') + '. Un atome est neutre, il a donc aussi ' + pl(a.Z, 'électron') + '.', ref: { kind: 'atome', id: a.sym, ion: -1 } };
+    } else if (t === 1) {
+      var ms = MOLS.filter(function (x) { return !x.crystal; });
+      m = ms[rnd(ms.length)];
+      var o2 = shuffle(uniqueOptions(m, ms, 4, function (x) { return x.f; }));
+      q = { key: 'f' + m.id, text: 'Quelle est la formule de la molécule de ' + m.nom.toLowerCase() + ' ?', opts: o2.map(function (x) { return sub(x.f); }), ok: o2.indexOf(m),
+        why: 'La molécule de ' + m.nom.toLowerCase() + ' a pour formule ' + sub(m.f) + ' : ' + composition(m) + '.', ref: { kind: 'molecule', id: m.id, ion: -1 } };
+    } else if (t === 2) {
+      a = ATOMS[rnd(ATOMS.length)];
+      var ext = a.shells[a.shells.length - 1];
+      var pool2 = [1, 2, 3, 4, 5, 6, 7, 8];
+      var o3 = shuffle(uniqueOptions(ext, pool2, 4, String));
+      q = { key: 'e' + a.sym, text: 'Combien d’électrons la couche externe de l’atome de ' + a.nom.toLowerCase() + ' contient-elle ?', opts: o3.map(String), ok: o3.indexOf(ext),
+        why: 'La répartition électronique de ' + a.nom.toLowerCase() + ' est ' + shellHtml(a.shells) + ' : la couche externe porte ' + pl(ext, 'électron') + '.', ref: { kind: 'atome', id: a.sym, ion: -1 } };
+    } else if (t === 3) {
+      var mf = MOLS.filter(function (x) { return x.forme === 'linéaire' || x.forme === 'coudée' || x.forme === 'pyramidale' || x.forme === 'tétraédrique'; });
+      m = mf[rnd(mf.length)];
+      var o4 = shuffle(['linéaire', 'coudée', 'pyramidale', 'tétraédrique']);
+      q = { key: 'g' + m.id, text: 'Quelle est la forme de la molécule de ' + m.nom.toLowerCase() + ' (' + sub(m.f) + ') ?', opts: o4, ok: o4.indexOf(m.forme),
+        why: 'La molécule de ' + m.nom.toLowerCase() + ' est ' + m.forme + '. ' + m.desc, ref: { kind: 'molecule', id: m.id, ion: -1 } };
+    } else {
+      var wi = ATOMS.filter(function (x) { return x.ions.length; });
+      a = wi[rnd(wi.length)];
+      var main = a.ions[0], all = [];
+      wi.forEach(function (x) { x.ions.forEach(function (io) { all.push({ sym: x.sym, c: io.c }); }); });
+      var mainOpt = { sym: a.sym, c: main.c };
+      var o5 = shuffle(uniqueOptions(mainOpt, all, 4, function (x) { return x.sym + x.c; }));
+      var verb = main.c > 0 ? 'perd ' + pl(main.c, 'électron') : 'gagne ' + pl(-main.c, 'électron');
+      q = { key: 'i' + a.sym, text: 'Quel ion l’atome de ' + a.nom.toLowerCase() + ' forme-t-il le plus souvent ?', opts: o5.map(function (x) { return ionHtml(x.sym, x.c); }),
+        ok: o5.map(function (x) { return x.sym + x.c; }).indexOf(a.sym + main.c),
+        why: 'L’atome de ' + a.nom.toLowerCase() + ' ' + verb + ' : il devient l’ion ' + ionHtml(a.sym, main.c) + '. ' + main.note, ref: { kind: 'atome', id: a.sym, ion: 0 } };
+    }
+    return q;
+  }
+  function nextQuestion() {
+    var q, tries = 0;
+    do { q = makeQuestion(); tries++; } while (quiz.used[q.key] && tries < 30);
+    quiz.used[q.key] = 1; quiz.q = q; quiz.answered = false;
+    var html = '<div class="q-top"><span>Question ' + (quiz.i + 1) + ' sur ' + QN + '</span><span>Score : ' + quiz.score + '</span></div>' +
+      '<div class="bar" aria-hidden="true"><i style="width:' + (quiz.i / QN * 100) + '%"></i></div>' +
+      '<p class="q-text">' + q.text + '</p><div class="opts" id="opts">' +
+      q.opts.map(function (o, i) { return '<button type="button" class="opt" data-i="' + i + '"><span class="k">' + 'ABCD'.charAt(i) + '</span><span class="t">' + o + '</span></button>'; }).join('') +
+      '</div><div id="q-fb"></div>';
+    $('quiz').innerHTML = html;
+    Array.prototype.forEach.call($('opts').children, function (b) { b.addEventListener('click', function () { answer(Number(b.getAttribute('data-i'))); }); });
+  }
+  function answer(i) {
+    if (quiz.answered) return;
+    quiz.answered = true;
+    var q = quiz.q, good = i === q.ok;
+    if (good) quiz.score++;
+    Array.prototype.forEach.call($('opts').children, function (b, k) {
+      b.disabled = true;
+      if (k === q.ok) b.classList.add('ok'); else if (k === i) b.classList.add('ko');
+    });
+    var last = quiz.i + 1 >= QN;
+    $('q-fb').innerHTML = '<div class="fb ' + (good ? 'ok' : 'ko') + '"><b>' + (good ? 'Bonne réponse' : 'Réponse incorrecte') + '</b>' + q.why + '</div>' +
+      '<button class="btn" id="q-next" type="button" style="margin-top:14px">' + (last ? 'Voir mon score' : 'Question suivante') + '</button>';
+    $('q-next').addEventListener('click', function () { quiz.i++; if (quiz.i >= QN) quizEnd(); else nextQuestion(); });
+    $('q-next').focus();
+    view = { kind: q.ref.kind, id: q.ref.id, ion: q.ref.ion };
+    render3d();
+  }
+  function quizEnd() {
+    var best = load('labo.best', null);
+    if (best === null || quiz.score > best) { best = quiz.score; save('labo.best', best); }
+    var msg = quiz.score >= 9 ? 'Excellent : vous maîtrisez les atomes et les molécules.' : quiz.score >= 6 ? 'Bien joué. Relisez les fiches des notions ratées et recommencez.' : 'Parcourez les fiches, puis retentez le quiz.';
+    $('quiz').innerHTML = '<div class="eyebrow">Résultat</div><p class="score">' + quiz.score + '<small> / ' + QN + '</small></p><p class="desc">' + msg + '</p><p class="eyebrow">Meilleur score : ' + best + ' / ' + QN + '</p>' +
+      '<button class="btn" id="q-again" type="button">Rejouer</button>';
+    $('q-again').addEventListener('click', function () { quiz = { i: 0, score: 0, used: {} }; nextQuestion(); });
+  }
+
+  /* ============ Scène 3D ============ */
+  function init3d() {
+    if (!window.THREE) throw new Error('three.js indisponible');
+    var T = window.THREE;
+    var stage = $('stage'), canvas = $('cv'), labelsEl = $('labels');
+    var renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var scene = new T.Scene();
+    var FOV = 40;
+    var camera = new T.PerspectiveCamera(FOV, 1, 0.1, 300);
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* Éclairage doux, sans reflets : modèles mats, cernés d'un trait */
+    scene.add(new T.HemisphereLight(0xffffff, 0x8c9490, 0.95));
+    var key = new T.DirectionalLight(0xffffff, 0.75); key.position.set(3, 6, 5); scene.add(key);
+    var fill = new T.DirectionalLight(0xffffff, 0.25); fill.position.set(-5, -2, 3); scene.add(fill);
+
+    var outlineMat = new T.MeshBasicMaterial({ color: 0x171b1f, side: T.BackSide });
+    function isDark() {
+      var t = document.documentElement.getAttribute('data-theme');
+      if (t === 'dark') return true;
+      if (t === 'light') return false;
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    function applyTheme() { outlineMat.color.set(isDark() ? 0x7b8388 : 0x171b1f); }
+    applyTheme();
+    try {
+      new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      if (mq.addEventListener) mq.addEventListener('change', applyTheme);
+    } catch (err) {}
+
+    var model = new T.Group(); scene.add(model);
+    var sphereG = new T.SphereGeometry(1, 40, 28);
+    var cylG = new T.CylinderGeometry(1, 1, 1, 16, 1);
+    var matCache = {};
+    function mat(color) {
+      if (!matCache[color]) matCache[color] = new T.MeshStandardMaterial({ color: color, roughness: 0.85, metalness: 0 });
+      return matCache[color];
+    }
+    var disposables = [], labels = [], pivots = [], pickables = [], atomMeshes = [];
+    var fitR = 5;
+
+    function clearModel() {
+      while (model.children.length) model.remove(model.children[0]);
+      disposables.forEach(function (g) { g.dispose(); }); disposables = [];
+      labels.forEach(function (l) { if (l.el.parentNode) l.el.parentNode.removeChild(l.el); }); labels = [];
+      pivots = []; pickables = []; atomMeshes = [];
+    }
+    function addLabel(obj, text, cls) {
+      var el = document.createElement('div');
+      el.className = 'lbl ' + (cls || ''); el.innerHTML = text;
+      labelsEl.appendChild(el);
+      labels.push({ el: el, obj: obj });
+    }
+    function ball(color, r) {
+      var m = new T.Mesh(sphereG, mat(color)); m.scale.setScalar(r);
+      var o = new T.Mesh(sphereG, outlineMat); o.scale.setScalar(1.07); m.add(o);
+      return m;
+    }
+
+    function buildAtom(a, ion) {
+      clearModel();
+      var total = a.Z + a.N, shells = ion ? ion.shells : a.shells;
+      var nr = 0.17, R = total === 1 ? 0 : nr * Math.cbrt(total) * 1.25;
+      var order = [], i;
+      for (i = 0; i < total; i++) order.push(i < a.Z ? 'p' : 'n');
+      var rs = rng(a.Z * 7 + 3);
+      for (i = order.length - 1; i > 0; i--) { var j = Math.floor(rs() * (i + 1)); var tmp = order[i]; order[i] = order[j]; order[j] = tmp; }
+      var nuc = new T.Group(); model.add(nuc);
+      for (i = 0; i < total; i++) {
+        var y = total === 1 ? 0 : 1 - (i + 0.5) * 2 / total, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = i * 2.399963;
+        var s = ball(order[i] === 'p' ? COL.proton : COL.neutron, nr);
+        s.position.set(Math.cos(th) * rr * R, y * R, Math.sin(th) * rr * R);
+        nuc.add(s);
+      }
+      var coreLbl = new T.Object3D(); coreLbl.position.set(0, -(R + 0.45), 0); model.add(coreLbl);
+      addLabel(coreLbl, 'noyau', 'core');
+      var names = ['K', 'L', 'M', 'N'];
+      shells.forEach(function (count, k) {
+        var r = 1.7 + 1.0 * k;
+        var sg = new T.Group(); sg.rotation.set(0.35 + k * 0.5, k * 0.85, k * 0.3); model.add(sg);
+        var tg = new T.TorusGeometry(r, 0.014, 8, 120); disposables.push(tg);
+        sg.add(new T.Mesh(tg, new T.MeshBasicMaterial({ color: COL.ring, transparent: true, opacity: 0.75 })));
+        var pv = new T.Group(); sg.add(pv);
+        for (var q = 0; q < count; q++) {
+          var ang = q * TAU / count + k * 0.5;
+          var el = ball(COL.electron, 0.13);
+          el.position.set(Math.cos(ang) * r, Math.sin(ang) * r, 0);
+          pv.add(el);
+        }
+        pivots.push({ o: pv, s: (k % 2 ? -1 : 1) * 0.7 / Math.pow(k + 1, 0.8) });
+        var ll = new T.Object3D(); ll.position.set(0, r + 0.28, 0); sg.add(ll);
+        addLabel(ll, names[k], 'shell');
+      });
+      fitR = (shells.length ? 1.7 + (shells.length - 1) : R + 1.2) + 0.9;
+      applyFit();
+    }
+
+    function buildMol(m, comp) {
+      clearModel();
+      var K = m.k || 1.45, c = [0, 0, 0];
+      m.atoms.forEach(function (a) { c = vadd(c, [a[1], a[2], a[3]]); });
+      c = vsc(c, 1 / m.atoms.length);
+      var P = m.atoms.map(function (a) { return vsc(vsub([a[1], a[2], a[3]], c), K); });
+      var bondsG = new T.Group(); model.add(bondsG); bondsG.visible = !comp;
+      var maxD = 0;
+      m.atoms.forEach(function (a, idx) {
+        var kk = a[0], mesh = ball(CPK[colKey(kk)], comp ? RC[kk] : RB[kk]);
+        mesh.position.set(P[idx][0], P[idx][1], P[idx][2]);
+        mesh.userData = { el: kk, rb: RB[kk], rc: RC[kk] };
+        model.add(mesh); pickables.push(mesh); atomMeshes.push(mesh);
+        if (!m.crystal) addLabel(mesh, kk, '');
+        maxD = Math.max(maxD, vlen(P[idx]) + RC[kk]);
+      });
+      m.bonds.forEach(function (b) {
+        var p1 = P[b[0]], p2 = P[b[1]], d = vsub(p2, p1), len = vlen(d), u = vunit(d);
+        var ref = Math.abs(vdot(u, [0, 0, 1])) > 0.9 ? [0, 1, 0] : [0, 0, 1];
+        var perp = vunit(vcross(u, ref));
+        var offs = b[2] === 1 ? [0] : b[2] === 2 ? [-0.11, 0.11] : [-0.19, 0, 0.19];
+        var rad = b[2] === 1 ? 0.09 : b[2] === 2 ? 0.06 : 0.05;
+        offs.forEach(function (o) {
+          var mid = vadd(vsc(vadd(p1, p2), 0.5), vsc(perp, o));
+          var cyl = new T.Mesh(cylG, mat(COL.stick));
+          cyl.scale.set(rad, len, rad);
+          cyl.position.set(mid[0], mid[1], mid[2]);
+          cyl.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(u[0], u[1], u[2]));
+          bondsG.add(cyl);
+        });
+      });
+      model.userData.bonds = bondsG;
+      fitR = maxD + 0.5;
+      applyFit();
+    }
+    function setCompact(comp) {
+      atomMeshes.forEach(function (mesh) { mesh.scale.setScalar(comp ? mesh.userData.rc : mesh.userData.rb); });
+      if (model.userData.bonds) model.userData.bonds.visible = !comp;
+    }
+    function fitFor(m, comp) {
+      var K = m.k || 1.45, c = [0, 0, 0], maxD = 0;
+      m.atoms.forEach(function (a) { c = vadd(c, [a[1], a[2], a[3]]); });
+      c = vsc(c, 1 / m.atoms.length);
+      m.atoms.forEach(function (a) { maxD = Math.max(maxD, vlen(vsc(vsub([a[1], a[2], a[3]], c), K)) + (comp ? RC[a[0]] : RB[a[0]])); });
+      return maxD + 0.5;
+    }
+
+    /* Caméra */
+    var theta = 0.7, phi = 1.25, dist = 12, wantDist = 12, w = 1, h = 1, dragging = false;
+    function fitDist() { return Math.max(4, fitR / (Math.tan(FOV * Math.PI / 360) * Math.min(camera.aspect, 1.25))); }
+    function applyFit() { wantDist = fitDist(); }
+    function resize() {
+      w = Math.max(1, stage.clientWidth); h = Math.max(1, stage.clientHeight);
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      applyFit();
+    }
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+    resize(); dist = wantDist * 1.3;
+    function zoom(f) { wantDist = Math.min(fitDist() * 2.4, Math.max(fitDist() * 0.3, wantDist * f)); }
+    $('zin').addEventListener('click', function () { zoom(0.8); });
+    $('zout').addEventListener('click', function () { zoom(1.25); });
+
+    var drag = null;
+    canvas.addEventListener('pointerdown', function (e) {
+      drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, id: e.pointerId }; dragging = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      theta -= (e.clientX - drag.x) * 0.007;
+      phi = Math.min(Math.PI - 0.2, Math.max(0.2, phi - (e.clientY - drag.y) * 0.007));
+      drag.x = e.clientX; drag.y = e.clientY;
+    });
+    function endDrag(e, click) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var moved = Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy), d = drag;
+      drag = null; dragging = false;
+      if (click && moved < 6 && pickables.length && view.kind === 'molecule' && !MOL[view.id].crystal) {
+        var rect = canvas.getBoundingClientRect();
+        var ndc = new T.Vector2(((d.sx - rect.left) / rect.width) * 2 - 1, -((d.sy - rect.top) / rect.height) * 2 + 1);
+        var ray = new T.Raycaster(); ray.setFromCamera(ndc, camera);
+        var hit = ray.intersectObjects(pickables, false);
+        if (hit.length) {
+          var el = hit[0].object.userData.el;
+          $('pick').innerHTML = ATOM[el].nom + ' (' + el + ') · ' + pl(ATOM[el].Z, 'proton') + ' · ' + pl(ATOM[el].Z, 'électron');
+        }
+      }
+    }
+    canvas.addEventListener('pointerup', function (e) { endDrag(e, true); });
+    canvas.addEventListener('pointercancel', function (e) { endDrag(e, false); });
+    canvas.addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (k === 'ArrowLeft') theta += 0.1; else if (k === 'ArrowRight') theta -= 0.1;
+      else if (k === 'ArrowUp') phi = Math.max(0.2, phi - 0.08); else if (k === 'ArrowDown') phi = Math.min(Math.PI - 0.2, phi + 0.08);
+      else if (k === '+' || k === '=') zoom(0.85); else if (k === '-') zoom(1.18); else return;
+      e.preventDefault();
+    });
+
+    var last = performance.now(), v = new T.Vector3();
+    function frame(now) {
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!dragging && !reduce) theta += dt * 0.12;
+      if (!reduce) pivots.forEach(function (p) { p.o.rotation.z += p.s * dt; });
+      dist += (wantDist - dist) * (1 - Math.pow(0.003, dt));
+      var sp = Math.sin(phi);
+      camera.position.set(dist * sp * Math.sin(theta), dist * Math.cos(phi), dist * sp * Math.cos(theta));
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+      if (!labelsEl.hidden) {
+        labels.forEach(function (l) {
+          l.obj.getWorldPosition(v); v.project(camera);
+          var show = v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05;
+          l.el.style.display = show ? '' : 'none';
+          if (show) l.el.style.transform = 'translate(' + ((v.x * 0.5 + 0.5) * w).toFixed(1) + 'px,' + ((-v.y * 0.5 + 0.5) * h).toFixed(1) + 'px) translate(-50%,-50%)';
+        });
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    return {
+      atom: function (a, ion) { model.userData.molId = null; buildAtom(a, ion); },
+      mol: function (m, comp) {
+        if (model.userData.molId === m.id && atomMeshes.length) { setCompact(comp); fitR = fitFor(m, comp); applyFit(); return; }
+        model.userData.molId = m.id; buildMol(m, comp);
+      }
+    };
+  }
+
+  /* ============ Démarrage ============ */
+  buildPicker();
+  renderAtomInfo();
+  markPicker();
+  setLegend();
+  try { S3 = init3d(); render3d(); }
+  catch (err) { $('nogl').classList.add('show'); $('cv').style.display = 'none'; }
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
